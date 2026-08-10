@@ -8,10 +8,12 @@ import {
 export const runtime = "nodejs";
 
 interface RepositoryBody extends SshCredentials {
-  action?: "list" | "status" | "pull" | "build" | "clone";
+  action?: "list" | "status" | "pull" | "build" | "clone" | "branches" | "checkout" | "rename";
   path?: string;
   command?: string;
   url?: string;
+  branch?: string;
+  newName?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -35,6 +37,8 @@ export async function POST(request: NextRequest) {
     path,
     command,
     url,
+    branch,
+    newName,
   } = body;
 
   if (!host || !port || !username || !password) {
@@ -181,6 +185,91 @@ export async function POST(request: NextRequest) {
         message: cloneResult.success
           ? undefined
           : cloneResult.message || cloneResult.error,
+      });
+    }
+
+    case "branches": {
+      if (!path) {
+        return NextResponse.json(
+          { success: false, message: "Repository path is required." },
+          { status: 400 },
+        );
+      }
+
+      const branchesResult = await executeSshCommand({
+        ...credentials,
+        command: `git config --global --add safe.directory '*' && cd ${path} && git branch -a 2>/dev/null | sed 's/^[* ]*//' || echo "-"`,
+      });
+
+      if (!branchesResult.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              branchesResult.message || branchesResult.error || "Failed to fetch branches.",
+          },
+          { status: 500 },
+        );
+      }
+
+      const branches = branchesResult.output
+        .split("\n")
+        .map((b) => b.trim())
+        .filter((b) => b && b !== "-");
+
+      return NextResponse.json({ success: true, branches });
+    }
+
+    case "checkout": {
+      if (!path || !branch) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Repository path and branch are required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const checkoutResult = await executeSudoCommand({
+        ...credentials,
+        command: `git config --global --add safe.directory '/var/www/${path.split("/").pop() || "repo"}' && cd ${path} && git checkout ${branch} 2>&1`,
+      });
+
+      return NextResponse.json({
+        success: checkoutResult.success,
+        output: checkoutResult.output,
+        message: checkoutResult.success
+          ? `Switched to branch ${branch}`
+          : checkoutResult.message || checkoutResult.error,
+      });
+    }
+
+    case "rename": {
+      if (!path || !newName) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Repository path and new name are required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const parentDir = path.split("/").slice(0, -1).join("/");
+      const newPath = `${parentDir}/${newName}`;
+
+      const renameResult = await executeSudoCommand({
+        ...credentials,
+        command: `mv ${path} ${newPath} 2>&1`,
+      });
+
+      return NextResponse.json({
+        success: renameResult.success,
+        output: renameResult.output,
+        message: renameResult.success
+          ? `Repository renamed to ${newName}`
+          : renameResult.message || renameResult.error,
       });
     }
 
