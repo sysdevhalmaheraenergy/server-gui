@@ -11,6 +11,7 @@ import {
   GitBranch,
   LogOut,
   Unplug,
+  Shield,
 } from "lucide-react";
 import { ServerProvider } from "@/components/providers/ServerProvider";
 import {
@@ -81,6 +82,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       href: "/admin/repository",
       label: "Repository",
       icon: GitBranch,
+    },
+    {
+      href: "/admin/ufw",
+      label: "UFW",
+      icon: Shield,
     },
     {
       href: "/admin/configuration",
