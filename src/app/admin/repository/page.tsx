@@ -24,7 +24,7 @@ interface Repository {
 
 interface LogModal {
   repo: Repository;
-  action: "status" | "pull" | "build" | "clone";
+  action: "status" | "pull" | "build" | "clone" | "restart" | "stop" | "start" | "reset";
   output: string;
   isLoading: boolean;
 }
@@ -38,6 +38,11 @@ const BUILD_COMMANDS = [
     value: "sudo docker compose up -d --build",
   },
   { label: "docker compose down", value: "sudo docker compose down" },
+  { label: "docker compose restart", value: "sudo docker compose restart" },
+  { label: "docker compose stop", value: "sudo docker compose stop" },
+  { label: "docker compose start", value: "sudo docker compose start" },
+  { label: "Reset Docker", value: "sudo docker compose down && sudo docker compose up --build -d" },
+
 ];
 
 export default function RepositoryPage() {

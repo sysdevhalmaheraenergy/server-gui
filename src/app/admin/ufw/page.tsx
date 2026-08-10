@@ -43,6 +43,7 @@ export default function UfwPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchPort, setSearchPort] = useState("");
   const rulesPerPage = 10;
 
   useEffect(() => {
@@ -314,9 +315,12 @@ export default function UfwPage() {
     }
   };
 
-  // Pagination calculations
-  const totalPages = Math.ceil(rules.length / rulesPerPage);
-  const paginatedRules = rules.slice(
+  // Filter and pagination calculations
+  const filteredRules = searchPort.trim()
+    ? rules.filter((rule) => rule.port.includes(searchPort.trim()))
+    : rules;
+  const totalPages = Math.ceil(filteredRules.length / rulesPerPage);
+  const paginatedRules = filteredRules.slice(
     (currentPage - 1) * rulesPerPage,
     currentPage * rulesPerPage
   );
@@ -411,9 +415,36 @@ export default function UfwPage() {
 
       {/* Rules Table */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div className="mb-4 flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-semibold">Current Rules</h3>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Terminal className="h-4 w-4 text-gray-500" />
+            <h3 className="text-sm font-semibold">Current Rules</h3>
+          </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by port..."
+              value={searchPort}
+              onChange={(e) => {
+                setSearchPort(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm pl-8 outline-none focus:border-blue-400 dark:border-white/10 dark:bg-white/5 dark:focus:border-blue-600 sm:w-48"
+            />
+            <svg
+              className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
         </div>
 
         {isLoading ? (
