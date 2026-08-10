@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { executeSshCommand, executeSudoCommand, type SshCredentials } from "@/lib/ssh";
+import {
+  executeSshCommand,
+  executeSudoCommand,
+  type SshCredentials,
+} from "@/lib/ssh";
 
 export const runtime = "nodejs";
 
@@ -18,16 +22,28 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { success: false, message: "Invalid request body." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const { host, port, username, password, action = "list", path, command, url } = body;
+  const {
+    host,
+    port,
+    username,
+    password,
+    action = "list",
+    path,
+    command,
+    url,
+  } = body;
 
   if (!host || !port || !username || !password) {
     return NextResponse.json(
-      { success: false, message: "Host, port, username, and password are required." },
-      { status: 400 }
+      {
+        success: false,
+        message: "Host, port, username, and password are required.",
+      },
+      { status: 400 },
     );
   }
 
@@ -42,8 +58,12 @@ export async function POST(request: NextRequest) {
 
       if (!result.success) {
         return NextResponse.json(
-          { success: false, message: result.message || result.error || "Failed to list repositories." },
-          { status: 500 }
+          {
+            success: false,
+            message:
+              result.message || result.error || "Failed to list repositories.",
+          },
+          { status: 500 },
         );
       }
 
@@ -56,7 +76,7 @@ export async function POST(request: NextRequest) {
         names.map(async (name) => {
           const gitResult = await executeSshCommand({
             ...credentials,
-            command: `cd /var/www/${name} && git rev-parse --is-inside-work-tree 2>/dev/null && git branch --show-current 2>/dev/null || echo "-"`,
+            command: `git config --global --add safe.directory '*' && cd /var/www/${name} && git rev-parse --is-inside-work-tree 2>/dev/null && git branch --show-current 2>/dev/null || echo "-"`,
           });
 
           const [isGit, branch] = gitResult.success
@@ -69,7 +89,7 @@ export async function POST(request: NextRequest) {
             isGit: isGit.trim() === "true",
             branch: branch?.trim() || "-",
           };
-        })
+        }),
       );
 
       return NextResponse.json({ success: true, repositories: repos });
@@ -79,13 +99,13 @@ export async function POST(request: NextRequest) {
       if (!path) {
         return NextResponse.json(
           { success: false, message: "Repository path is required." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       const result = await executeSshCommand({
         ...credentials,
-        command: `cd ${path} && git status --short --branch 2>/dev/null || echo "Not a git repository"`,
+        command: `git config --global --add safe.directory '*' && cd ${path} && git status --short --branch 2>/dev/null || echo "Not a git repository"`,
       });
 
       return NextResponse.json({
@@ -99,13 +119,13 @@ export async function POST(request: NextRequest) {
       if (!path) {
         return NextResponse.json(
           { success: false, message: "Repository path is required." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
-      const result = await executeSshCommand({
+      const result = await executeSudoCommand({
         ...credentials,
-        command: `cd ${path} && git pull 2>&1`,
+        command: `git config --global --add safe.directory '/var/www/${path.split("/").pop()?.replace(".git", "") || "repo"}' && cd ${path} && git pull 2>&1`,
       });
 
       return NextResponse.json({
@@ -118,8 +138,11 @@ export async function POST(request: NextRequest) {
     case "build": {
       if (!path || !command) {
         return NextResponse.json(
-          { success: false, message: "Repository path and build command are required." },
-          { status: 400 }
+          {
+            success: false,
+            message: "Repository path and build command are required.",
+          },
+          { status: 400 },
         );
       }
 
@@ -132,7 +155,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: buildResult.success,
         output: buildResult.output,
-        message: buildResult.success ? undefined : buildResult.message || buildResult.error,
+        message: buildResult.success
+          ? undefined
+          : buildResult.message || buildResult.error,
       });
     }
 
@@ -140,27 +165,29 @@ export async function POST(request: NextRequest) {
       if (!url) {
         return NextResponse.json(
           { success: false, message: "Git clone URL is required." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       const cloneResult = await executeSudoCommand({
         ...credentials,
-        command: `cd /var/www && git clone ${url}`,
+        command: `git config --global --add safe.directory '/var/www/${url.split("/").pop()?.replace(".git", "") || "repo"}' && cd /var/www && git clone ${url}`,
         timeout: 300000,
       });
 
       return NextResponse.json({
         success: cloneResult.success,
         output: cloneResult.output,
-        message: cloneResult.success ? undefined : cloneResult.message || cloneResult.error,
+        message: cloneResult.success
+          ? undefined
+          : cloneResult.message || cloneResult.error,
       });
     }
 
     default:
       return NextResponse.json(
         { success: false, message: "Invalid action." },
-        { status: 400 }
+        { status: 400 },
       );
   }
 }
