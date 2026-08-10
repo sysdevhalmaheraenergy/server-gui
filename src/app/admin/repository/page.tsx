@@ -13,10 +13,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  CONNECTION_KEY,
-  type ServerConnection,
-} from "@/lib/connection";
+import { CONNECTION_KEY, type ServerConnection } from "@/lib/connection";
 
 interface Repository {
   name: string;
@@ -36,7 +33,10 @@ const BUILD_COMMANDS = [
   { label: "npm run build", value: "npm run build" },
   { label: "bun run build", value: "bun run build" },
   { label: "composer install", value: "composer install --no-dev" },
-  { label: "docker compose up -d --build", value: "sudo docker compose up -d --build" },
+  {
+    label: "docker compose up -d --build",
+    value: "sudo docker compose up -d --build",
+  },
   { label: "docker compose down", value: "sudo docker compose down" },
 ];
 
@@ -89,8 +89,13 @@ export default function RepositoryPage() {
   const handleClone = async () => {
     if (!connection || !cloneUrl.trim()) return;
 
-    const dummyRepo: Repository = { name: cloneUrl.split("/").pop()?.replace(".git", "") || "repo", path: "/var/www", isGit: true, branch: "-" };
-    
+    const dummyRepo: Repository = {
+      name: cloneUrl.split("/").pop()?.replace(".git", "") || "repo",
+      path: "/var/www",
+      isGit: true,
+      branch: "-",
+    };
+
     setModal({
       repo: dummyRepo,
       action: "clone",
@@ -120,7 +125,7 @@ export default function RepositoryPage() {
               output: data.output || data.message || "No output.",
               isLoading: false,
             }
-          : null
+          : null,
       );
     } catch (err) {
       const message = axios.isAxiosError(err)
@@ -128,7 +133,7 @@ export default function RepositoryPage() {
         : "Failed to clone repository.";
       toast.error(message);
       setModal((prev) =>
-        prev ? { ...prev, output: message, isLoading: false } : null
+        prev ? { ...prev, output: message, isLoading: false } : null,
       );
     }
   };
@@ -136,7 +141,7 @@ export default function RepositoryPage() {
   const runAction = async (
     repo: Repository,
     action: "status" | "pull" | "build" | "clone",
-    command?: string
+    command?: string,
   ) => {
     if (!connection) return;
 
@@ -169,7 +174,7 @@ export default function RepositoryPage() {
               output: data.output || data.message || "No output.",
               isLoading: false,
             }
-          : null
+          : null,
       );
 
       if (action === "pull") {
@@ -181,7 +186,7 @@ export default function RepositoryPage() {
         : `Failed to ${action} repository.`;
       toast.error(message);
       setModal((prev) =>
-        prev ? { ...prev, output: message, isLoading: false } : null
+        prev ? { ...prev, output: message, isLoading: false } : null,
       );
     }
   };
@@ -231,7 +236,9 @@ export default function RepositoryPage() {
               disabled={isLoading}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
           </div>
@@ -303,13 +310,13 @@ export default function RepositoryPage() {
                               icon={<Terminal className="h-3.5 w-3.5" />}
                               label="Status"
                             />
-                            <ActionButton
-                              onClick={() => runAction(repo, "pull")}
-                              icon={<Download className="h-3.5 w-3.5" />}
-                              label="Pull"
-                            />
                           </>
                         )}
+                        <ActionButton
+                          onClick={() => runAction(repo, "pull")}
+                          icon={<Download className="h-3.5 w-3.5" />}
+                          label="Pull"
+                        />
                         <div className="flex items-center gap-2">
                           <select
                             value={buildCommand}
@@ -323,7 +330,9 @@ export default function RepositoryPage() {
                             ))}
                           </select>
                           <ActionButton
-                            onClick={() => runAction(repo, "build", buildCommand)}
+                            onClick={() =>
+                              runAction(repo, "build", buildCommand)
+                            }
                             icon={<Play className="h-3.5 w-3.5" />}
                             label="Build"
                           />
