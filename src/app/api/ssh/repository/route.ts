@@ -1,0 +1,166 @@
+import { NextRequest, NextResponse } from "next/server";
+import { executeSshCommand, executeSudoCommand, type SshCredentials } from "@/lib/ssh";
+
+export const runtime = "nodejs";
+
+interface RepositoryBody extends SshCredentials {
+  action?: "list" | "status" | "pull" | "build" | "clone";
+  path?: string;
+  command?: string;
+  url?: string;
+}
+
+export async function POST(request: NextRequest) {
+  let body: RepositoryBody;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "Invalid request body." },
+      { status: 400 }
+    );
+  }
+
+  const { host, port, username, password, action = "list", path, command, url } = body;
+
+  if (!host || !port || !username || !password) {
+    return NextResponse.json(
+      { success: false, message: "Host, port, username, and password are required." },
+      { status: 400 }
+    );
+  }
+
+  const credentials: SshCredentials = { host, port, username, password };
+
+  switch (action) {
+    case "list": {
+      const result = await executeSshCommand({
+        ...credentials,
+        command: "ls -1 /var/www",
+      });
+
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, message: result.message || result.error || "Failed to list repositories." },
+          { status: 500 }
+        );
+      }
+
+      const names = result.output
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      const repos = await Promise.all(
+        names.map(async (name) => {
+          const gitResult = await executeSshCommand({
+            ...credentials,
+            command: `cd /var/www/${name} && git rev-parse --is-inside-work-tree 2>/dev/null && git branch --show-current 2>/dev/null || echo "-"`,
+          });
+
+          const [isGit, branch] = gitResult.success
+            ? gitResult.output.trim().split("\n")
+            : ["false", "-"];
+
+          return {
+            name,
+            path: `/var/www/${name}`,
+            isGit: isGit.trim() === "true",
+            branch: branch?.trim() || "-",
+          };
+        })
+      );
+
+      return NextResponse.json({ success: true, repositories: repos });
+    }
+
+    case "status": {
+      if (!path) {
+        return NextResponse.json(
+          { success: false, message: "Repository path is required." },
+          { status: 400 }
+        );
+      }
+
+      const result = await executeSshCommand({
+        ...credentials,
+        command: `cd ${path} && git status --short --branch 2>/dev/null || echo "Not a git repository"`,
+      });
+
+      return NextResponse.json({
+        success: result.success,
+        output: result.output,
+        message: result.success ? undefined : result.message || result.error,
+      });
+    }
+
+    case "pull": {
+      if (!path) {
+        return NextResponse.json(
+          { success: false, message: "Repository path is required." },
+          { status: 400 }
+        );
+      }
+
+      const result = await executeSshCommand({
+        ...credentials,
+        command: `cd ${path} && git pull 2>&1`,
+      });
+
+      return NextResponse.json({
+        success: result.success,
+        output: result.output,
+        message: result.success ? undefined : result.message || result.error,
+      });
+    }
+
+    case "build": {
+      if (!path || !command) {
+        return NextResponse.json(
+          { success: false, message: "Repository path and build command are required." },
+          { status: 400 }
+        );
+      }
+
+      const buildResult = await executeSudoCommand({
+        ...credentials,
+        command: `cd ${path} && ${command}`,
+        timeout: 300000,
+      });
+
+      return NextResponse.json({
+        success: buildResult.success,
+        output: buildResult.output,
+        message: buildResult.success ? undefined : buildResult.message || buildResult.error,
+      });
+    }
+
+    case "clone": {
+      if (!url) {
+        return NextResponse.json(
+          { success: false, message: "Git clone URL is required." },
+          { status: 400 }
+        );
+      }
+
+      const cloneResult = await executeSudoCommand({
+        ...credentials,
+        command: `cd /var/www && git clone ${url}`,
+        timeout: 300000,
+      });
+
+      return NextResponse.json({
+        success: cloneResult.success,
+        output: cloneResult.output,
+        message: cloneResult.success ? undefined : cloneResult.message || cloneResult.error,
+      });
+    }
+
+    default:
+      return NextResponse.json(
+        { success: false, message: "Invalid action." },
+        { status: 400 }
+      );
+  }
+}
