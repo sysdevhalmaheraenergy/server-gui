@@ -41,6 +41,10 @@ export default function UfwPage() {
   const [allowProtocol, setAllowProtocol] = useState<"tcp" | "udp" | "">("");
   const [deleteRule, setDeleteRule] = useState("");
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const rulesPerPage = 10;
+
   useEffect(() => {
     const raw = sessionStorage.getItem(CONNECTION_KEY);
     if (!raw) {
@@ -71,6 +75,7 @@ export default function UfwPage() {
       } else {
         const parsedRules = parseUfwOutput(data.output);
         setRules(parsedRules);
+        setCurrentPage(1);
       }
     } catch (err) {
       const message = axios.isAxiosError(err)
@@ -85,23 +90,31 @@ export default function UfwPage() {
   const parseUfwOutput = (output: string): UfwRule[] => {
     const lines = output.split("\n").filter((line) => line.trim());
     const rules: UfwRule[] = [];
+    let ruleIndex = 0;
 
     for (const line of lines) {
       // Skip header lines
-      if (line.includes("Status:") || line.includes("Logging:") || line.includes("Default")) {
+      if (
+        line.includes("Status:") ||
+        line.includes("Logging:") ||
+        line.includes("Default") ||
+        line.startsWith("To ") ||
+        line.startsWith("--")
+      ) {
         continue;
       }
 
-      // Parse rule lines like: "[ 1] 22/tcp                     ALLOW IN    Anywhere"
-      const match = line.match(/\[\s*(\d+)\]\s+(\S+)\s+(ALLOW|DENY)\s+(IN|OUT)\s+(.*)/);
+      // Parse rule lines: "22/tcp    ALLOW    Anywhere"
+      const match = line.match(/^(\S+)\s+(ALLOW|DENY)\s+(.*)/);
       if (match) {
-        const [, id, portProto, action, direction, from] = match;
+        const [, portProto, action, from] = match;
         const [port, protocol] = portProto.split("/");
+        ruleIndex++;
         rules.push({
-          id,
+          id: String(ruleIndex),
           action,
           from: from?.trim() || "Anywhere",
-          to: direction === "IN" ? "This server" : "Anywhere",
+          to: "This server",
           protocol: protocol || "any",
           port: port || "",
         });
@@ -301,6 +314,13 @@ export default function UfwPage() {
     }
   };
 
+  // Pagination calculations
+  const totalPages = Math.ceil(rules.length / rulesPerPage);
+  const paginatedRules = rules.slice(
+    (currentPage - 1) * rulesPerPage,
+    currentPage * rulesPerPage
+  );
+
   if (!connection) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -336,68 +356,43 @@ export default function UfwPage() {
         </div>
 
         {/* Actions */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Allow/Deny Port */}
-          <div className="rounded-xl border border-gray-200 p-4 dark:border-white/10">
-            <h3 className="mb-3 text-sm font-semibold">Allow / Deny Port</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Port (e.g., 80, 443)"
-                value={allowPort}
-                onChange={(e) => setAllowPort(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-              />
-              <select
-                value={allowProtocol}
-                onChange={(e) => setAllowProtocol(e.target.value as "tcp" | "udp" | "")}
-                className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-              >
-                <option value="">Any</option>
-                <option value="tcp">TCP</option>
-                <option value="udp">UDP</option>
-              </select>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={handleAllow}
-                disabled={!allowPort.trim() || isActionLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Allow
-              </button>
-              <button
-                onClick={handleDeny}
-                disabled={!allowPort.trim() || isActionLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700 disabled:opacity-60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Deny
-              </button>
-            </div>
+        <div className="rounded-xl border border-gray-200 p-4 dark:border-white/10">
+          <h3 className="mb-3 text-sm font-semibold">Allow / Deny Port</h3>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Port (e.g., 80, 443)"
+              value={allowPort}
+              onChange={(e) => setAllowPort(e.target.value)}
+              className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+            />
+            <select
+              value={allowProtocol}
+              onChange={(e) => setAllowProtocol(e.target.value as "tcp" | "udp" | "")}
+              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+            >
+              <option value="">Any</option>
+              <option value="tcp">TCP</option>
+              <option value="udp">UDP</option>
+            </select>
           </div>
-
-          {/* Delete Rule */}
-          <div className="rounded-xl border border-gray-200 p-4 dark:border-white/10">
-            <h3 className="mb-3 text-sm font-semibold">Delete Rule</h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Rule number (e.g., 1)"
-                value={deleteRule}
-                onChange={(e) => setDeleteRule(e.target.value)}
-                className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm outline-none dark:border-white/10 dark:bg-white/5"
-              />
-              <button
-                onClick={handleDelete}
-                disabled={!deleteRule.trim() || isActionLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700 disabled:opacity-60"
-              >
-                <Trash className="h-3.5 w-3.5" />
-                Delete
-              </button>
-            </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleAllow}
+              disabled={!allowPort.trim() || isActionLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-60"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Allow
+            </button>
+            <button
+              onClick={handleDeny}
+              disabled={!allowPort.trim() || isActionLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700 disabled:opacity-60"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Deny
+            </button>
           </div>
         </div>
 
@@ -455,10 +450,13 @@ export default function UfwPage() {
                   <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300">
                     From
                   </th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                {rules.map((rule) => (
+                {paginatedRules.map((rule) => (
                   <tr
                     key={rule.id}
                     className="transition-colors hover:bg-gray-50/80 dark:hover:bg-white/[.03]"
@@ -488,10 +486,65 @@ export default function UfwPage() {
                     <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                       {rule.from}
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => {
+                          setDeleteRule(rule.id);
+                          handleDelete();
+                        }}
+                        disabled={isActionLoading}
+                        className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white transition-all hover:bg-red-700 disabled:opacity-60"
+                      >
+                        <Trash className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {(currentPage - 1) * rulesPerPage + 1} to{" "}
+              {Math.min(currentPage * rulesPerPage, rules.length)} of{" "}
+              {rules.length} rules
+            </p>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </section>
