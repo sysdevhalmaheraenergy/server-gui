@@ -12,6 +12,7 @@ import {
   X,
   Terminal,
   Pencil,
+  Plug,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CONNECTION_KEY, type ServerConnection } from "@/lib/connection";
@@ -58,7 +59,12 @@ const BUILD_COMMANDS = [
   {
     label: "Update docker compose",
     value:
-      "git pull && sudo docker compose down && sudo docker compose up --build -d",
+      "git pull 2>&1 && sudo docker compose down && sudo docker compose up --build -d",
+  },
+  {
+    label: "Update docker compose via Bash script",
+    value:
+      "git pull 2>&1 && sudo ./deploy.sh",
   },
 ];
 
@@ -225,6 +231,40 @@ export default function RepositoryPage() {
     }
   };
 
+  const [testingGit, setTestingGit] = useState(false);
+
+  const handleTestGit = async () => {
+    if (!connection) return;
+
+    setTestingGit(true);
+    try {
+      const { data } = await axios.post("/api/ssh/repository", {
+        ...connection,
+        action: "test-git",
+      });
+
+      if (data.success) {
+        toast.success("Git SSH connection successful");
+      } else {
+        toast.error(data.message || "Git SSH connection failed");
+      }
+
+      setModal({
+        repo: { name: "Git SSH Test", path: "-", isGit: true, branch: "-" },
+        action: "status",
+        output: data.output || data.message,
+        isLoading: false,
+      });
+    } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.message || err.message
+        : "Failed to test git connection.";
+      toast.error(message);
+    } finally {
+      setTestingGit(false);
+    }
+  };
+
   const handleClone = async () => {
     if (!connection || !cloneUrl.trim()) return;
 
@@ -371,6 +411,14 @@ export default function RepositoryPage() {
             >
               <Download className="h-4 w-4" />
               Clone
+            </button>
+            <button
+              onClick={handleTestGit}
+              disabled={testingGit}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
+            >
+              <Plug className={`h-4 w-4 ${testingGit ? "animate-pulse" : ""}`} />
+              Test Git
             </button>
             <button
               onClick={() => fetchRepositories(connection)}

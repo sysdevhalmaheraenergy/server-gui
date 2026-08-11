@@ -15,6 +15,7 @@ interface ExecuteOptions extends SshCredentials {
 interface ExecuteSudoOptions extends SshCredentials {
   command: string;
   timeout?: number;
+  preserveEnv?: boolean;
 }
 
 export interface ExecuteResult {
@@ -120,6 +121,7 @@ export async function executeSudoCommand({
   password,
   command,
   timeout = 30000,
+  preserveEnv = false,
 }: ExecuteSudoOptions): Promise<ExecuteResult> {
   return new Promise((resolve) => {
     const conn = new Client();
@@ -148,9 +150,11 @@ export async function executeSudoCommand({
       });
     }, timeout);
 
+    const sudoFlags = preserveEnv ? "-S -E" : "-S";
+
     conn
       .on("ready", () => {
-        conn.exec(`sudo -S -p '' bash -c ${JSON.stringify(command)}`, (err, stream) => {
+        conn.exec(`sudo ${sudoFlags} -p '' bash -c ${JSON.stringify(command)}`, (err, stream) => {
           if (err) {
             finish({
               success: false,

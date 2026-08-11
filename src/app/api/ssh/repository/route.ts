@@ -8,7 +8,7 @@ import {
 export const runtime = "nodejs";
 
 interface RepositoryBody extends SshCredentials {
-  action?: "list" | "status" | "pull" | "build" | "clone" | "branches" | "checkout" | "rename";
+  action?: "list" | "status" | "pull" | "build" | "clone" | "branches" | "checkout" | "rename" | "test-git";
   path?: string;
   command?: string;
   url?: string;
@@ -127,7 +127,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const result = await executeSudoCommand({
+      // Run as connected user to preserve SSH agent access
+      const result = await executeSshCommand({
         ...credentials,
         command: `git config --global --add safe.directory '/var/www/${path.split("/").pop()?.replace(".git", "") || "repo"}' && cd ${path} && git pull 2>&1`,
       });
@@ -150,11 +151,41 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const buildResult = await executeSudoCommand({
-        ...credentials,
-        command: `cd ${path} && ${command}`,
-        timeout: 300000,
-      });
+      // Split command to run git as user, then docker as root
+      const hasGitPull = command.startsWith("git pull");
+      let buildResult;
+
+      if (hasGitPull) {
+        const gitPart = "git pull";
+        const remaining = command.replace("git pull", "").trim();
+
+        // Run git pull as user first
+        const gitResult = await executeSshCommand({
+          ...credentials,
+          command: `git config --global --add safe.directory '/var/www/${path.split("/").pop() || "repo"}' && cd ${path} && ${gitPart} 2>&1`,
+        });
+
+        if (!gitResult.success) {
+          buildResult = gitResult;
+        } else if (remaining) {
+          // Run remaining commands with sudo
+          buildResult = await executeSudoCommand({
+            ...credentials,
+            command: `cd ${path} && ${remaining}`,
+            timeout: 300000,
+          });
+          // Prepend git output
+          buildResult.output = gitResult.output + "\n" + buildResult.output;
+        } else {
+          buildResult = gitResult;
+        }
+      } else {
+        buildResult = await executeSudoCommand({
+          ...credentials,
+          command: `cd ${path} && ${command}`,
+          timeout: 300000,
+        });
+      }
 
       return NextResponse.json({
         success: buildResult.success,
@@ -173,7 +204,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const cloneResult = await executeSudoCommand({
+      // Run as user to preserve SSH agent access
+      const cloneResult = await executeSshCommand({
         ...credentials,
         command: `git config --global --add safe.directory '/var/www/${url.split("/").pop()?.replace(".git", "") || "repo"}' && cd /var/www && git clone ${url}`,
         timeout: 300000,
@@ -231,7 +263,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const checkoutResult = await executeSudoCommand({
+      // Run as user to preserve SSH agent access
+      const checkoutResult = await executeSshCommand({
         ...credentials,
         command: `git config --global --add safe.directory '/var/www/${path.split("/").pop() || "repo"}' && cd ${path} && git checkout ${branch} 2>&1`,
       });
@@ -270,6 +303,24 @@ export async function POST(request: NextRequest) {
         message: renameResult.success
           ? `Repository renamed to ${newName}`
           : renameResult.message || renameResult.error,
+      });
+    }
+
+    case "test-git": {
+      const testResult = await executeSshCommand({
+        ...credentials,
+        command: "ssh -T git@github.com 2>&1 || true",
+      });
+
+      const output = testResult.output || "";
+      const success = output.includes("successfully authenticated") || output.includes("Hi ");
+
+      return NextResponse.json({
+        success,
+        output,
+        message: success
+          ? "Git SSH connection successful"
+          : "Git SSH connection failed. Make sure SSH key is configured.",
       });
     }
 

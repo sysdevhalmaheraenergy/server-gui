@@ -12,6 +12,7 @@ import {
   LogOut,
   Unplug,
   Shield,
+  History,
 } from "lucide-react";
 import { ServerProvider } from "@/components/providers/ServerProvider";
 import { NavigationProgress } from "@/components/NavigationProgress";
@@ -88,6 +89,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       href: "/admin/ufw",
       label: "UFW",
       icon: Shield,
+    },
+    {
+      href: "/admin/login-history",
+      label: "Login History",
+      icon: History,
     },
     {
       href: "/admin/configuration",
