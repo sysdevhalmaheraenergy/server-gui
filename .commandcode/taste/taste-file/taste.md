@@ -7,3 +7,4 @@
 - Prefers modals with search/filter inputs over inline dropdowns when selecting from a list of items (e.g. branch picker). Confidence: 0.85
 - Prefers sidebar navigation over top header navigation for admin/dashboard layouts, with branding at top, nav links in middle, and user actions (logout, disconnect) anchored at the bottom. Confidence: 0.85
 - Prefers page-level action buttons (refresh, clone, test, etc.) to remain inline in the page body rather than moved to the top header bar. Asked to rollback a header-actions approach after trying it. Confidence: 0.7
+- Code-switches between English and Indonesian in feature requests (e.g. "Lokasi & penempatan" mixed with English). Comfortable with Indonesian terms for UI concepts. Confidence: 0.8

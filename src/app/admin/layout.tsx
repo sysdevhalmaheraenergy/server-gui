@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   LayoutGrid,
   Server,
@@ -34,7 +35,20 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const session = JSON.parse(rawSession) as { email: string };
+      const session = JSON.parse(rawSession) as {
+        email: string;
+        authenticatedAt?: number;
+      };
+
+      const SESSION_MAX_MS =30 * 60 * 1000; //30 minutes
+      if (session.authenticatedAt && Date.now() - session.authenticatedAt > SESSION_MAX_MS) {
+        sessionStorage.removeItem("server-monitoring-session");
+        sessionStorage.removeItem(CONNECTION_KEY);
+        toast.error("Session expired. Please sign in again.");
+        router.replace("/");
+        return;
+      }
+
       setEmail(session.email);
     } catch {
       sessionStorage.removeItem("server-monitoring-session");
