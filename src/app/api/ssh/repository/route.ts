@@ -127,11 +127,33 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const repoName = path.split("/").pop()?.replace(".git", "") || "repo";
+
       // Run as connected user to preserve SSH agent access
-      const result = await executeSshCommand({
+      let result = await executeSshCommand({
         ...credentials,
-        command: `git config --global --add safe.directory '/var/www/${path.split("/").pop()?.replace(".git", "") || "repo"}' && cd ${path} && git pull 2>&1`,
+        command: `git config --global --add safe.directory '/var/www/${repoName}' && cd ${path} && git pull 2>&1`,
       });
+
+      // If permission denied on .git files, fix ownership and retry
+      if (
+        !result.success &&
+        result.output.includes("Permission denied") &&
+        result.output.includes(".git/")
+      ) {
+        const fixResult = await executeSudoCommand({
+          ...credentials,
+          command: `chown -R ${username}:${username} ${path}/.git`,
+        });
+
+        if (fixResult.success) {
+          result = await executeSshCommand({
+            ...credentials,
+            command: `git config --global --add safe.directory '/var/www/${repoName}' && cd ${path} && git pull 2>&1`,
+          });
+          result.output = `[Fixed .git permissions]\n${fixResult.output}\n\n${result.output}`;
+        }
+      }
 
       return NextResponse.json({
         success: result.success,

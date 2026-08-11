@@ -8,3 +8,4 @@
 - Prefers sidebar navigation over top header navigation for admin/dashboard layouts, with branding at top, nav links in middle, and user actions (logout, disconnect) anchored at the bottom. Confidence: 0.85
 - Prefers page-level action buttons (refresh, clone, test, etc.) to remain inline in the page body rather than moved to the top header bar. Asked to rollback a header-actions approach after trying it. Confidence: 0.7
 - Code-switches between English and Indonesian in feature requests (e.g. "Lokasi & penempatan" mixed with English). Comfortable with Indonesian terms for UI concepts. Confidence: 0.8
+- Prefers self-healing behavior in server operations — when an SSH command fails due to a known fixable issue (e.g. permission denied on .git), the app should auto-detect the error, apply the fix (e.g. `chown`), and retry, rather than just surfacing the raw error. Confidence: 0.8
