@@ -5,3 +5,5 @@
 - Wants visual loading indicators (e.g. progress bars) when navigating between pages for perceived responsiveness. Confidence: 0.8
 - Expects data tables to have search/filter inputs (e.g. search by port in UFW rules) that reset pagination to page 1 on change. Confidence: 0.8
 - Prefers modals with search/filter inputs over inline dropdowns when selecting from a list of items (e.g. branch picker). Confidence: 0.85
+- Prefers sidebar navigation over top header navigation for admin/dashboard layouts, with branding at top, nav links in middle, and user actions (logout, disconnect) anchored at the bottom. Confidence: 0.85
+- Prefers page-level action buttons (refresh, clone, test, etc.) to remain inline in the page body rather than moved to the top header bar. Asked to rollback a header-actions approach after trying it. Confidence: 0.7

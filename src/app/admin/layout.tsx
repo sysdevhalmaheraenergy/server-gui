@@ -113,26 +113,28 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 text-foreground dark:bg-background font-[family-name:var(--font-geist-sans)]">
+    <div className="flex min-h-screen bg-gray-50/50 text-foreground dark:bg-background font-[family-name:var(--font-geist-sans)]">
       <NavigationProgress />
-      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/80 backdrop-blur-md dark:border-white/10 dark:bg-[#0f172a]/60">
-        <div className="mx-auto flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+
+      {/* Sidebar */}
+      {!isConnectPage && (
+        <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-white/10 dark:bg-[#0f172a]">
+          <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-4 dark:border-white/10">
             <Link
-              href={isConnectPage ? "/admin/connect" : "/admin/container"}
+              href="/admin/container"
               className="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.06]"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-background shadow-md">
                 <LayoutGrid className="h-5 w-5" />
               </div>
-              <span className="hidden text-lg font-bold tracking-tight sm:inline">
+              <span className="text-lg font-bold tracking-tight">
                 Devops Panel
               </span>
             </Link>
           </div>
 
-          {!isConnectPage && (
-            <nav className="hidden items-center rounded-full border border-gray-200 bg-gray-100/50 p-1 dark:border-white/10 dark:bg-white/5 sm:flex">
+          <nav className="flex-1 overflow-y-auto p-3">
+            <div className="space-y-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -140,10 +142,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                       isActive
-                        ? "bg-white text-foreground shadow-sm dark:bg-white/10"
-                        : "text-gray-600 hover:text-foreground dark:text-gray-400 dark:hover:text-foreground"
+                        ? "bg-foreground text-background shadow-sm"
+                        : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -151,76 +153,59 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
-            </nav>
-          )}
+            </div>
+          </nav>
 
-          <div className="flex items-center gap-3">
-            {connection && !isConnectPage && (
-              <div className="hidden items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1.5 dark:border-green-900/50 dark:bg-green-900/20 sm:flex">
+          <div className="border-t border-gray-200 p-3 dark:border-white/10">
+            {connection && (
+              <div className="mb-3 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 dark:border-green-900/50 dark:bg-green-900/20">
                 <div className="h-2 w-2 rounded-full bg-green-600 dark:bg-green-400" />
-                <span className="max-w-[10rem] truncate text-sm font-medium text-green-800 dark:text-green-300">
+                <span className="truncate text-sm font-medium text-green-800 dark:text-green-300">
                   {connection.name || connection.host}
                 </span>
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+            <div className="mb-3 flex items-center gap-3 px-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">
                 {email.charAt(0).toUpperCase()}
               </div>
-              <span className="hidden max-w-[6rem] truncate text-sm font-medium sm:inline">
-                {email}
-              </span>
+              <span className="truncate text-sm font-medium">{email}</span>
             </div>
 
-            {connection && !isConnectPage && (
+            {connection && (
               <button
                 onClick={handleDisconnect}
-                className="group flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100/50 px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-amber-900/50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
+                className="group mb-2 flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-gray-100/50 px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-amber-900/50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
               >
                 <Unplug className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-                <span className="hidden lg:inline">Disconnect</span>
+                Disconnect
               </button>
             )}
 
             <button
               onClick={handleLogout}
-              className="group flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100/50 px-3 py-1.5 text-sm font-medium text-gray-700 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+              className="group flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-gray-100/50 px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
               <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-              <span className="hidden lg:inline">Logout</span>
+              Logout
             </button>
           </div>
-        </div>
-      </header>
-
-      {!isConnectPage && (
-        <nav className="border-b border-gray-200 bg-white px-4 py-2 dark:border-white/10 dark:bg-[#0f172a]/40 sm:hidden">
-          <div className="mx-auto flex max-w-7xl gap-2">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-foreground text-background shadow-sm"
-                      : "text-gray-600 hover:bg-black/[.05] dark:text-gray-400 dark:hover:bg-white/[.06]"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+        </aside>
       )}
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {children}
+      {/* Main Content */}
+      <main className={`flex-1 ${!isConnectPage ? "ml-64" : ""}`}>
+        {!isConnectPage && (
+          <header className="sticky top-0 z-30 flex h-16 items-center border-b border-gray-200/80 bg-white/80 px-6 backdrop-blur-md dark:border-white/10 dark:bg-[#0f172a]/60">
+            <h1 className="text-lg font-semibold">
+              {navItems.find((item) => item.href === pathname)?.label || "Admin"}
+            </h1>
+          </header>
+        )}
+        <div className="p-6">
+          {children}
+        </div>
       </main>
     </div>
   );
